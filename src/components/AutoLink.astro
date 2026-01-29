@@ -1,0 +1,20 @@
+---
+import Music from './Music.astro';
+
+interface Props {
+  href?: string;
+}
+
+const { href, ...rest } = Astro.props;
+
+const isYouTubeMusic = href && (
+  href.includes('music.youtube.com/watch') ||
+  href.includes('music.youtube.com/playlist')
+);
+---
+
+{isYouTubeMusic ? (
+  <Music url={href} />
+) : (
+  <a href={href} {...rest}><slot /></a>
+)}

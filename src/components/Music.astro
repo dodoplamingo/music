@@ -1,0 +1,211 @@
+---
+interface Props {
+  url: string;
+}
+
+const { url } = Astro.props;
+
+const YOUTUBE_API_KEY = import.meta.env.YOUTUBE_API_KEY || '';
+
+type LinkType = 'video' | 'playlist' | 'unknown';
+
+interface Track {
+  title: string;
+  artist: string;
+}
+
+function parseUrl(url: string): { type: LinkType; id: string | null } {
+  const videoPatterns = [
+    /music\.youtube\.com\/watch\?v=([^&]+)/,
+    /youtube\.com\/watch\?v=([^&]+)/,
+    /youtu\.be\/([^?]+)/,
+  ];
+
+  for (const pattern of videoPatterns) {
+    const match = url.match(pattern);
+    if (match) return { type: 'video', id: match[1] };
+  }
+
+  const playlistPatterns = [
+    /music\.youtube\.com\/playlist\?list=([^&]+)/,
+    /youtube\.com\/playlist\?list=([^&]+)/,
+  ];
+
+  for (const pattern of playlistPatterns) {
+    const match = url.match(pattern);
+    if (match) return { type: 'playlist', id: match[1] };
+  }
+
+  return { type: 'unknown', id: null };
+}
+
+const { type, id } = parseUrl(url);
+
+let title = type === 'playlist' ? 'Playlist' : 'YouTube Music';
+let thumbnail = '';
+let isPlaylist = type === 'playlist';
+let tracks: Track[] = [];
+let trackCount = 0;
+
+if (id) {
+  try {
+    if (type === 'video') {
+      const oembedUrl = `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${id}&format=json`;
+      thumbnail = `https://img.youtube.com/vi/${id}/mqdefault.jpg`;
+
+      const response = await fetch(oembedUrl);
+      if (response.ok) {
+        const data = await response.json();
+        title = data.title || title;
+      }
+    } else if (type === 'playlist' && YOUTUBE_API_KEY) {
+      const apiUrl = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50&playlistId=${id}&key=${YOUTUBE_API_KEY}`;
+      const response = await fetch(apiUrl);
+
+      if (response.ok) {
+        const data = await response.json();
+        trackCount = data.pageInfo?.totalResults || 0;
+
+        if (data.items && data.items.length > 0) {
+          const firstItem = data.items[0];
+          thumbnail = firstItem.snippet?.thumbnails?.medium?.url ||
+                      firstItem.snippet?.thumbnails?.default?.url || '';
+
+          tracks = data.items.map((item: any) => {
+            const snippet = item.snippet;
+            const fullTitle = snippet.title || '';
+            const parts = fullTitle.split(' - ');
+            if (parts.length >= 2) {
+              return { artist: parts[0].trim(), title: parts.slice(1).join(' - ').trim() };
+            }
+            return { artist: snippet.videoOwnerChannelTitle?.replace(' - Topic', '') || '', title: fullTitle };
+          });
+        }
+      }
+
+      const playlistUrl = `https://www.googleapis.com/youtube/v3/playlists?part=snippet&id=${id}&key=${YOUTUBE_API_KEY}`;
+      const playlistRes = await fetch(playlistUrl);
+      if (playlistRes.ok) {
+        const playlistData = await playlistRes.json();
+        if (playlistData.items && playlistData.items.length > 0) {
+          title = playlistData.items[0].snippet.title || title;
+        }
+      }
+    } else if (type === 'playlist') {
+      const oembedUrl = `https://www.youtube.com/oembed?url=https://www.youtube.com/playlist?list=${id}&format=json`;
+      const response = await fetch(oembedUrl);
+      if (response.ok) {
+        const data = await response.json();
+        title = data.title || title;
+        thumbnail = data.thumbnail_url || '';
+      }
+    }
+  } catch (e) {
+    // Keep defaults
+  }
+}
+---
+
+<a href={url} class="card" target="_blank" rel="noopener">
+  {thumbnail && (
+    <div class="card-thumb">
+      <img src={thumbnail} alt="" loading="lazy" />
+    </div>
+  )}
+  <div class="card-body">
+    <p class="card-title">{title}</p>
+    {isPlaylist && tracks.length > 0 && (
+      <ul class="card-tracks">
+        {tracks.map((track) => (
+          <li>{track.title} <span>— {track.artist}</span></li>
+        ))}
+        {trackCount > 50 && <li class="more">외 {trackCount - 50}곡</li>}
+      </ul>
+    )}
+    <p class="card-meta">{isPlaylist ? 'playlist · ' : ''}music.youtube.com</p>
+  </div>
+</a>
+
+<style>
+  .card {
+    display: flex;
+    gap: 12px;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    text-decoration: none;
+    color: var(--text);
+    margin: 16px 0;
+    transition: border-color 0.1s;
+  }
+
+  .card:hover {
+    border-color: #999;
+  }
+
+  .card-thumb {
+    flex-shrink: 0;
+    width: 72px;
+    height: 72px;
+    border-radius: 4px;
+    overflow: hidden;
+    background: var(--code-bg);
+  }
+
+  .card-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .card-body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+  }
+
+  .card-title {
+    font-family: 'Galmuri11', monospace;
+    font-size: 13px;
+    color: var(--text);
+    margin: 0;
+    line-height: 1.4;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .card-tracks {
+    list-style: none;
+    margin: 2px 0 0 0;
+    padding: 0;
+  }
+
+  .card-tracks li {
+    font-family: 'Galmuri11', monospace;
+    font-size: 11px;
+    color: var(--text);
+    line-height: 1.6;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .card-tracks li span {
+    color: var(--text-muted);
+  }
+
+  .card-tracks .more {
+    color: var(--text-muted);
+  }
+
+  .card-meta {
+    font-family: 'Galmuri11', monospace;
+    font-size: 11px;
+    color: var(--text-muted);
+    margin: 2px 0 0 0;
+  }
+</style>

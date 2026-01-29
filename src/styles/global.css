@@ -1,0 +1,185 @@
+/* 아이보리 개발자 감성 + 도트 폰트 */
+
+@import url('https://cdn.jsdelivr.net/npm/galmuri/dist/galmuri.css');
+
+:root {
+  --bg: #faf8f5;
+  --bg-alt: #f3f0eb;
+  --text: #2c2c2c;
+  --text-muted: #888;
+  --accent: #2c2c2c;
+  --accent-hover: #000;
+  --border: #ddd;
+  --code-bg: #f0ede8;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Galmuri14', monospace;
+  font-size: 14px;
+  line-height: 1.8;
+  min-height: 100vh;
+}
+
+.container {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 60px 20px;
+}
+
+/* Header */
+header {
+  margin-bottom: 60px;
+}
+
+.site-title {
+  font-family: 'Galmuri14', monospace;
+  font-size: 18px;
+  font-weight: normal;
+  margin-bottom: 8px;
+}
+
+.site-title a {
+  color: var(--text);
+  text-decoration: none;
+}
+
+.site-desc {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+/* Feed */
+.feed {
+  display: flex;
+  flex-direction: column;
+  gap: 48px;
+}
+
+/* Post */
+.post {
+  padding-bottom: 48px;
+  border-bottom: 1px solid var(--border);
+}
+
+.post:last-child {
+  border-bottom: none;
+}
+
+.post-date {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+.post-title {
+  font-family: 'Galmuri14', monospace;
+  font-size: 14px;
+  font-weight: normal;
+  margin-bottom: 16px;
+}
+
+.post-title a {
+  color: var(--text);
+  text-decoration: none;
+}
+
+.post-title a:hover {
+  color: var(--accent);
+}
+
+.post-content {
+  color: var(--text);
+  font-size: 14px;
+}
+
+.post-content p {
+  margin-bottom: 16px;
+}
+
+.post-content p:last-child {
+  margin-bottom: 0;
+}
+
+.post-content p:has(.card) {
+  display: contents;
+}
+
+.post-content a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-color: var(--accent);
+  text-underline-offset: 2px;
+}
+
+.post-content a:hover {
+  color: var(--accent-hover);
+}
+
+/* Music Link */
+.music-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 8px 14px;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text) !important;
+  text-decoration: none !important;
+  font-size: 13px;
+  transition: all 0.15s ease;
+}
+
+.music-link:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white !important;
+}
+
+.music-link::before {
+  content: "♪";
+}
+
+/* Footer */
+footer {
+  margin-top: 60px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+/* Selection */
+::selection {
+  background: var(--accent);
+  color: white;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .container {
+    padding: 40px 16px;
+  }
+
+  .site-title {
+    font-size: 24px;
+  }
+
+  .feed {
+    gap: 36px;
+  }
+
+  .post {
+    padding-bottom: 36px;
+  }
+}

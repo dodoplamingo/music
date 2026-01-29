@@ -1,0 +1,16 @@
+---
+// Render as div to avoid p > div nesting issues
+---
+<div class="paragraph"><slot /></div>
+
+<style>
+  .paragraph {
+    margin-bottom: 16px;
+  }
+  .paragraph:last-child {
+    margin-bottom: 0;
+  }
+  .paragraph:has(.card) {
+    margin-bottom: 0;
+  }
+</style>

@@ -1,0 +1,294 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { getCollection } from 'astro:content';
+import AutoLink from '../components/AutoLink.astro';
+import AutoParagraph from '../components/AutoParagraph.astro';
+
+export async function getStaticPaths() {
+  const posts = await getCollection('posts');
+
+  function getDateFromSlug(slug: string): Date {
+    const match = slug.match(/^(\d{4}-\d{2}-\d{2})/);
+    return match ? new Date(match[1]) : new Date();
+  }
+
+  // Collect all years and months
+  const years = new Set<string>();
+  const months = new Set<string>();
+
+  for (const post of posts) {
+    const date = getDateFromSlug(post.slug);
+    const year = String(date.getFullYear());
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    years.add(year);
+    months.add(`${year}/${month}`);
+  }
+
+  const paths = [
+    { params: { path: undefined } }, // index
+    ...[...years].map(year => ({ params: { path: year } })),
+    ...[...months].map(month => ({ params: { path: month } })),
+  ];
+
+  return paths;
+}
+
+const { path } = Astro.params;
+
+const posts = await getCollection('posts');
+
+function getDateFromSlug(slug: string): Date {
+  const match = slug.match(/^(\d{4}-\d{2}-\d{2})/);
+  return match ? new Date(match[1]) : new Date();
+}
+
+// Filter posts based on path
+let filteredPosts = posts;
+let filterYear: string | null = null;
+let filterMonth: string | null = null;
+
+if (path) {
+  const parts = path.split('/');
+  if (parts.length === 1) {
+    filterYear = parts[0];
+    filteredPosts = posts.filter(post => {
+      const date = getDateFromSlug(post.slug);
+      return String(date.getFullYear()) === filterYear;
+    });
+  } else if (parts.length === 2) {
+    filterYear = parts[0];
+    filterMonth = parts[1];
+    filteredPosts = posts.filter(post => {
+      const date = getDateFromSlug(post.slug);
+      return String(date.getFullYear()) === filterYear &&
+             String(date.getMonth() + 1).padStart(2, '0') === filterMonth;
+    });
+  }
+}
+
+const sortedPosts = filteredPosts.sort((a, b) => {
+  return getDateFromSlug(b.slug).getTime() - getDateFromSlug(a.slug).getTime();
+});
+
+// Group all posts by year, then by month (for sidebar)
+const allPosts = posts.sort((a, b) => {
+  return getDateFromSlug(b.slug).getTime() - getDateFromSlug(a.slug).getTime();
+});
+
+const postsByYear = new Map<string, Map<string, typeof posts>>();
+for (const post of allPosts) {
+  const date = getDateFromSlug(post.slug);
+  const year = String(date.getFullYear());
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const monthKey = `${year}-${month}`;
+
+  if (!postsByYear.has(year)) {
+    postsByYear.set(year, new Map());
+  }
+  const yearMap = postsByYear.get(year)!;
+  if (!yearMap.has(monthKey)) {
+    yearMap.set(monthKey, []);
+  }
+  yearMap.get(monthKey)!.push(post);
+}
+
+function formatDate(date: Date) {
+  return date.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+}
+
+function getYearPostCount(yearMap: Map<string, typeof posts>) {
+  let count = 0;
+  for (const monthPosts of yearMap.values()) {
+    count += monthPosts.length;
+  }
+  return count;
+}
+
+const currentPath = path || '';
+---
+
+<Layout>
+  <div class="layout">
+    <div class="main">
+      <header>
+        <h1 class="site-title"><a href="/">music</a></h1>
+      </header>
+
+      <main class="feed">
+        {sortedPosts.map(async (post) => {
+          const { Content } = await post.render();
+          const date = getDateFromSlug(post.slug);
+          return (
+            <article class="post">
+              <time class="post-date">{formatDate(date)}</time>
+              <div class="post-content">
+                <Content components={{ a: AutoLink, p: AutoParagraph }} />
+              </div>
+            </article>
+          );
+        })}
+
+        {sortedPosts.length === 0 && (
+          <p style="color: var(--text-muted);">아직 글이 없습니다.</p>
+        )}
+      </main>
+
+      <footer>
+        <p>powered by rlaisqls</p>
+      </footer>
+    </div>
+
+    <aside class="sidebar">
+      <nav class="index">
+        <p class="index-title">index</p>
+        <ul class="year-list">
+          <li>
+            <a href="/" class:list={["nav-link", { active: !path }]}>all</a>
+            <span class="count">{allPosts.length}</span>
+          </li>
+          {[...postsByYear.entries()].map(([year, monthMap]) => (
+            <li class="year-group">
+              <details open={filterYear === year || (!filterYear && year === String(new Date().getFullYear()))}>
+                <summary>
+                  <a href={`/${year}`} class:list={["nav-link", "year", { active: filterYear === year && !filterMonth }]}>
+                    {year}
+                  </a>
+                  <span class="count">{getYearPostCount(monthMap)}</span>
+                </summary>
+                <ul class="month-list">
+                  {[...monthMap.entries()].map(([monthKey, monthPosts]) => {
+                    const [y, m] = monthKey.split('-');
+                    return (
+                      <li>
+                        <a href={`/${y}/${m}`} class:list={["nav-link", { active: filterYear === y && filterMonth === m }]}>
+                          {m}
+                        </a>
+                        <span class="count">{monthPosts.length}</span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </details>
+            </li>
+          ))}
+        </ul>
+      </nav>
+    </aside>
+  </div>
+</Layout>
+
+<style>
+  .layout {
+    display: flex;
+    gap: 40px;
+  }
+
+  .main {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .sidebar {
+    flex-shrink: 0;
+    width: 100px;
+    padding-top: 60px;
+  }
+
+  .index {
+    position: sticky;
+    top: 40px;
+  }
+
+  .index-title {
+    font-family: 'Galmuri11', monospace;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin: 0 0 8px 0;
+  }
+
+  .year-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .year-list > li {
+    display: flex;
+    justify-content: space-between;
+    font-family: 'Galmuri11', monospace;
+    font-size: 12px;
+    padding: 4px 0;
+  }
+
+  .year-group {
+    display: block !important;
+  }
+
+  .year-group details {
+    width: 100%;
+  }
+
+  .year-group summary {
+    display: flex;
+    justify-content: space-between;
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .year-group summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .year-group summary .year::before {
+    content: '▸ ';
+    font-size: 10px;
+    color: var(--text-muted);
+  }
+
+  .year-group details[open] summary .year::before {
+    content: '▾ ';
+  }
+
+  .month-list {
+    list-style: none;
+    margin: 0;
+    padding: 0 0 0 14px;
+  }
+
+  .month-list li {
+    display: flex;
+    justify-content: space-between;
+    padding: 3px 0;
+  }
+
+  .nav-link {
+    color: var(--text-muted);
+    text-decoration: none;
+    font-family: 'Galmuri11', monospace;
+    font-size: 12px;
+  }
+
+  .nav-link:hover {
+    color: var(--text);
+  }
+
+  .nav-link.active {
+    color: var(--text);
+  }
+
+  .count {
+    color: var(--text-muted);
+    font-family: 'Galmuri11', monospace;
+    font-size: 12px;
+  }
+
+  @media (max-width: 700px) {
+    .sidebar {
+      display: none;
+    }
+  }
+</style>
