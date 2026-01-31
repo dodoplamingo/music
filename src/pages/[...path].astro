@@ -119,6 +119,12 @@ const currentPath = path || '';
       </header>
 
       <main class="feed">
+        {!path && (
+        <p class="intro">
+        새로운 곡을 발견하는 도파민에 약간 중독되어 있습니다.<br/>
+        선호는 있지만 장르를 가리지는 않습니다.
+        </p>
+        )}
         {sortedPosts.map(async (post) => {
           const { Content } = await post.render();
           const date = getDateFromSlug(post.slug);
@@ -182,6 +188,12 @@ const currentPath = path || '';
 </Layout>
 
 <style>
+  .intro {
+    color: var(--text-muted);
+    font-size: 14px;
+    margin: 0 0 24px 0;
+  }
+
   .layout {
     display: flex;
     gap: 40px;
